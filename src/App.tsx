@@ -72,7 +72,7 @@ export default function App() {
 
   useEffect(() => {
     let active = true
-    fetch('/engwords.txt')
+    fetch(`${import.meta.env.BASE_URL}engwords.txt`)
       .then((response) => {
         if (!response.ok) throw new Error('The English word list could not be loaded.')
         return response.text()
@@ -282,7 +282,7 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <a className="brand" href="/" aria-label="Word Climb home">
+        <a className="brand" href={import.meta.env.BASE_URL} aria-label="Word Climb home">
           <span className="brand-mark" aria-hidden="true">
             W
           </span>
