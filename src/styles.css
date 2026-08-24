@@ -110,7 +110,24 @@ button:disabled {
 
 .header-actions {
   display: flex;
+  align-items: center;
   gap: 8px;
+}
+
+.language-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.language-select select {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
 }
 
 .icon-button {
