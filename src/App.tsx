@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Icon } from './components/Icon'
 import {
   LEVEL_LENGTHS,
@@ -7,21 +7,71 @@ import {
   parseDictionary,
   type LetterTile,
 } from './lib/gameEngine'
+import { SPANISH_CHAINS } from './data/chains'
 
 type GamePhase = 'loading' | 'playing' | 'won' | 'error'
 type MessageTone = 'neutral' | 'good' | 'bad'
+type Language = 'en' | 'es'
 
 interface Message {
   text: string
   tone: MessageTone
 }
 
-const INITIAL_MESSAGE: Message = {
-  text: 'Build the hidden 3-letter word to begin.',
-  tone: 'neutral',
+const COPY = {
+  en: {
+    language: 'Language', howToPlay: 'How to play', newGame: 'New game', climb: 'The climb',
+    threeToEight: 'Three to eight', yourLetters: 'Your letters', carryThese: 'Carry these',
+    chooseThree: 'Choose three', chooseOneMore: 'Choose one more', hintsLeft: 'left',
+    useHint: 'Use a hint', removeDistractor: 'Remove a distractor', revealFirst: 'Reveal first letter',
+    revealSecond: 'Reveal second letter', noHints: 'No hints remaining',
+    keyboardTip: 'Words are checked as soon as you fill every space. You can also type and use Backspace.',
+    readingWords: 'Reading 42,405 English words…', snag: 'We hit a snag.', howToPlayTitle: 'Climb one letter at a time.',
+    help: ['Start by finding the specific hidden 3-letter word among six gray letters.', 'Each new word uses every blue letter from the last answer plus one gray letter.', 'Rearrange the letters freely. A real English word may still be the wrong hidden word.', 'Reach the 8-letter word to complete the climb.'],
+    hintHelp: 'You get three hints for the entire game. On each round, hints remove a distractor first, then reveal the first and second letters.',
+    complete: 'Climb complete', reachedTop: 'You reached the top.', completedWords: 'Six hidden words, each carrying the last one forward.', playAnother: 'Play another chain',
+    builtFrom: 'Built from the supplied English dictionary', initial: 'Build the hidden 3-letter word to begin.',
+    arrange: 'Arrange the letters; your word will be checked automatically.',
+    nextRound: (length: number) => `Carry the blue letters and add one gray letter to make ${length}.`,
+    chooseLetters: (length: number) => `Choose ${length} letters first.`,
+    correct: (word: string) => `${word.toUpperCase()} — that's it!`,
+    wrongWord: (word: string) => `${word.toUpperCase()} is a word, but not the hidden word.`,
+    notWord: (word: string) => `${word.toUpperCase()} is not in the supplied word list.`,
+    removed: 'One distractor has been removed.',
+    revealed: (position: number, letter: string) => `Letter ${position + 1} is ${letter.toUpperCase()}.`,
+    error: 'The game could not be prepared.', dictionaryError: 'The English word list could not be loaded.',
+  },
+  es: {
+    language: 'Idioma', howToPlay: 'Cómo jugar', newGame: 'Juego nuevo', climb: 'La escalada',
+    threeToEight: 'De tres a ocho', yourLetters: 'Tus letras', carryThese: 'Conserva estas',
+    chooseThree: 'Elige tres', chooseOneMore: 'Elige una más', hintsLeft: 'restantes',
+    useHint: 'Usar una pista', removeDistractor: 'Quitar un distractor', revealFirst: 'Mostrar primera letra',
+    revealSecond: 'Mostrar segunda letra', noHints: 'No quedan pistas',
+    keyboardTip: 'Las palabras se verifican al completar todos los espacios. También puedes escribir y usar Retroceso.',
+    readingWords: 'Preparando palabras en castellano…', snag: 'Algo salió mal.', howToPlayTitle: 'Sube agregando una letra cada vez.',
+    help: ['Comienza encontrando la palabra oculta de tres letras entre seis letras grises.', 'Cada palabra nueva usa todas las letras azules de la respuesta anterior y una letra gris.', 'Puedes reorganizar las letras libremente. Una palabra real puede no ser la respuesta oculta.', 'Llega a la palabra de ocho letras para completar la escalada.'],
+    hintHelp: 'Tienes tres pistas para toda la partida. En cada ronda, las pistas primero quitan un distractor y luego muestran la primera y segunda letra.',
+    complete: 'Escalada completada', reachedTop: 'Llegaste a la cima.', completedWords: 'Seis palabras ocultas; cada una conserva las letras de la anterior.', playAnother: 'Jugar otra cadena',
+    builtFrom: 'Palabras seleccionadas en castellano', initial: 'Forma la palabra oculta de tres letras para comenzar.',
+    arrange: 'Ordena las letras; tu palabra se verificará automáticamente.',
+    nextRound: (length: number) => `Conserva las letras azules y agrega una letra gris para formar ${length} letras.`,
+    chooseLetters: (length: number) => `Primero elige ${length} letras.`,
+    correct: (word: string) => `${word.toUpperCase()} — ¡correcto!`,
+    wrongWord: (word: string) => `${word.toUpperCase()} es una palabra, pero no es la palabra oculta.`,
+    notWord: (word: string) => `${word.toUpperCase()} no está en la lista de palabras seleccionadas.`,
+    removed: 'Se quitó un distractor.',
+    revealed: (position: number, letter: string) => `La letra ${position + 1} es ${letter.toUpperCase()}.`,
+    error: 'No se pudo preparar el juego.', dictionaryError: 'No se pudo cargar la lista de palabras en inglés.',
+  },
+} as const
+
+function initialMessage(language: Language): Message {
+  return { text: COPY[language].initial, tone: 'neutral' }
 }
 
 export default function App() {
+  const [language, setLanguage] = useState<Language>('en')
+  const languageRef = useRef<Language>('en')
   const [dictionary, setDictionary] = useState<Set<string> | null>(null)
   const [chain, setChain] = useState<string[]>([])
   const [levelIndex, setLevelIndex] = useState(0)
@@ -32,11 +82,16 @@ export default function App() {
   const [lockedPositions, setLockedPositions] = useState<Set<number>>(new Set())
   const [hintsRemaining, setHintsRemaining] = useState(3)
   const [roundHintStep, setRoundHintStep] = useState(0)
-  const [message, setMessage] = useState<Message>(INITIAL_MESSAGE)
+  const [message, setMessage] = useState<Message>(() => initialMessage('en'))
   const [phase, setPhase] = useState<GamePhase>('loading')
   const [isAdvancing, setIsAdvancing] = useState(false)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [shakeCount, setShakeCount] = useState(0)
+  const t = COPY[language]
+
+  useEffect(() => {
+    languageRef.current = language
+  }, [language])
 
   const target = chain[levelIndex] ?? ''
   const tileMap = useMemo(() => new Map(tiles.map((tile) => [tile.id, tile])), [tiles])
@@ -46,9 +101,17 @@ export default function App() {
   )
   const guess = entries.map((tileId) => (tileId ? tileMap.get(tileId)?.letter ?? '' : '')).join('')
 
-  const beginGame = useCallback((loadedDictionary: Set<string>) => {
+  const beginGame = useCallback((englishDictionary: Set<string>, selectedLanguage = languageRef.current) => {
+    const copy = COPY[selectedLanguage]
     try {
-      const nextChain = chooseChain(loadedDictionary)
+      const dictionary = selectedLanguage === 'es'
+        ? new Set(SPANISH_CHAINS.flat())
+        : englishDictionary
+      const nextChain = chooseChain(
+        dictionary,
+        Math.random,
+        selectedLanguage === 'es' ? SPANISH_CHAINS : undefined,
+      )
       setChain(nextChain)
       setLevelIndex(0)
       setTiles(createTiles(nextChain, 0))
@@ -58,12 +121,12 @@ export default function App() {
       setLockedPositions(new Set())
       setHintsRemaining(3)
       setRoundHintStep(0)
-      setMessage(INITIAL_MESSAGE)
+      setMessage(initialMessage(selectedLanguage))
       setIsAdvancing(false)
       setPhase('playing')
     } catch (error) {
       setMessage({
-        text: error instanceof Error ? error.message : 'The game could not be prepared.',
+        text: error instanceof Error ? error.message : copy.error,
         tone: 'bad',
       })
       setPhase('error')
@@ -74,19 +137,19 @@ export default function App() {
     let active = true
     fetch(`${import.meta.env.BASE_URL}engwords.txt`)
       .then((response) => {
-        if (!response.ok) throw new Error('The English word list could not be loaded.')
+        if (!response.ok) throw new Error(COPY[languageRef.current].dictionaryError)
         return response.text()
       })
       .then((raw) => {
         if (!active) return
         const loadedDictionary = parseDictionary(raw)
         setDictionary(loadedDictionary)
-        beginGame(loadedDictionary)
+        beginGame(loadedDictionary, languageRef.current)
       })
       .catch((error: unknown) => {
         if (!active) return
         setMessage({
-          text: error instanceof Error ? error.message : 'The English word list could not be loaded.',
+          text: error instanceof Error ? error.message : COPY[languageRef.current].dictionaryError,
           tone: 'bad',
         })
         setPhase('error')
@@ -117,9 +180,9 @@ export default function App() {
         next[openPosition] = tileId
         return next
       })
-      setMessage({ text: 'Arrange the letters, then submit your word.', tone: 'neutral' })
+      setMessage({ text: t.arrange, tone: 'neutral' })
     },
-    [isAdvancing, lockedPositions, phase, removedTileIds],
+    [isAdvancing, lockedPositions, phase, removedTileIds, t.arrange],
   )
 
   const removeLastEntry = useCallback(() => {
@@ -158,15 +221,15 @@ export default function App() {
     setLockedPositions(new Set())
     setRoundHintStep(0)
     setMessage({
-      text: `Carry the blue letters and add one gray letter to make ${LEVEL_LENGTHS[nextLevel]}.`,
+      text: t.nextRound(LEVEL_LENGTHS[nextLevel]),
       tone: 'neutral',
     })
-  }, [chain, levelIndex])
+  }, [chain, levelIndex, t])
 
   const submitGuess = useCallback(() => {
     if (phase !== 'playing' || isAdvancing) return
     if (entries.some((entry) => entry === null)) {
-      setMessage({ text: `Choose ${target.length} letters first.`, tone: 'bad' })
+      setMessage({ text: t.chooseLetters(target.length), tone: 'bad' })
       setShakeCount((count) => count + 1)
       return
     }
@@ -174,7 +237,7 @@ export default function App() {
     if (guess === target) {
       setIsAdvancing(true)
       setCompleted((words) => [...words, target])
-      setMessage({ text: `${target.toUpperCase()} — that's it!`, tone: 'good' })
+      setMessage({ text: t.correct(target), tone: 'good' })
       window.setTimeout(advanceLevel, 650)
       return
     }
@@ -182,12 +245,12 @@ export default function App() {
     const isEnglishWord = dictionary?.has(guess)
     setMessage({
       text: isEnglishWord
-        ? `${guess.toUpperCase()} is a word, but not the hidden word.`
-        : `${guess.toUpperCase()} is not in the supplied word list.`,
+        ? t.wrongWord(guess)
+        : t.notWord(guess),
       tone: 'bad',
     })
     setShakeCount((count) => count + 1)
-  }, [advanceLevel, dictionary, entries, guess, isAdvancing, phase, target])
+  }, [advanceLevel, dictionary, entries, guess, isAdvancing, phase, t, target])
 
   const revealPosition = useCallback(
     (position: number) => {
@@ -224,20 +287,20 @@ export default function App() {
       )
       if (distractor) {
         setRemovedTileIds((ids) => new Set(ids).add(distractor.id))
-        setMessage({ text: 'One distractor has been removed.', tone: 'neutral' })
+        setMessage({ text: t.removed, tone: 'neutral' })
       }
     } else {
       const position = roundHintStep - 1
       revealPosition(position)
       setMessage({
-        text: `Letter ${position + 1} is ${target[position].toUpperCase()}.`,
+        text: t.revealed(position, target[position]),
         tone: 'neutral',
       })
     }
 
     setHintsRemaining((remaining) => remaining - 1)
     setRoundHintStep((step) => Math.min(step + 1, 3))
-  }, [hintsRemaining, isAdvancing, phase, removedTileIds, revealPosition, roundHintStep, target, tiles])
+  }, [hintsRemaining, isAdvancing, phase, removedTileIds, revealPosition, roundHintStep, t, target, tiles])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -282,10 +345,10 @@ export default function App() {
 
   const hintLabel =
     roundHintStep === 0
-      ? 'Remove a distractor'
+      ? t.removeDistractor
       : roundHintStep === 1
-        ? 'Reveal first letter'
-        : 'Reveal second letter'
+        ? t.revealFirst
+        : t.revealSecond
 
   return (
     <div className="app-shell">
@@ -300,24 +363,39 @@ export default function App() {
           </span>
         </a>
         <div className="header-actions">
+          <label className="language-select">
+            <span>{t.language}</span>
+            <select
+              value={language}
+              onChange={(event) => {
+                const nextLanguage = event.target.value as Language
+                setLanguage(nextLanguage)
+                if (dictionary) beginGame(dictionary, nextLanguage)
+                else setMessage(initialMessage(nextLanguage))
+              }}
+            >
+              <option value="en">English</option>
+              <option value="es">Castellano</option>
+            </select>
+          </label>
           <button
             className="icon-button"
             type="button"
-            aria-label="How to play"
+            aria-label={t.howToPlay}
             onClick={() => setIsHelpOpen(true)}
           >
             <Icon name="help" />
-            <span>How to play</span>
+            <span>{t.howToPlay}</span>
           </button>
           <button
             className="icon-button"
             type="button"
-            aria-label="New game"
-            onClick={() => dictionary && beginGame(dictionary)}
+            aria-label={t.newGame}
+            onClick={() => dictionary && beginGame(dictionary, language)}
             disabled={!dictionary}
           >
             <Icon name="refresh" />
-            <span>New game</span>
+            <span>{t.newGame}</span>
           </button>
         </div>
       </header>
@@ -326,8 +404,8 @@ export default function App() {
         <section className="ladder-panel" aria-labelledby="ladder-title">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">The climb</p>
-              <h1 id="ladder-title">Three to eight</h1>
+              <p className="eyebrow">{t.climb}</p>
+              <h1 id="ladder-title">{t.threeToEight}</h1>
             </div>
             <div className="level-counter" aria-label={`Level ${levelIndex + 1} of 6`}>
               <strong>{String(levelIndex + 1).padStart(2, '0')}</strong>
@@ -373,23 +451,23 @@ export default function App() {
         <section className="play-panel" aria-labelledby="letters-title">
           <div className="round-meta">
             <div>
-              <p className="eyebrow">Round {levelIndex + 1}</p>
-              <h2 id="letters-title">Your letters</h2>
+              <p className="eyebrow">{language === 'es' ? `Ronda ${levelIndex + 1}` : `Round ${levelIndex + 1}`}</p>
+              <h2 id="letters-title">{t.yourLetters}</h2>
             </div>
             <div className="hints-count" aria-label={`${hintsRemaining} hints remaining`}>
               <Icon name="bulb" size={18} />
-              <span>{hintsRemaining} left</span>
+              <span>{hintsRemaining} {t.hintsLeft}</span>
             </div>
           </div>
 
           {phase === 'loading' ? (
             <div className="loading-state" role="status">
               <span className="loader" />
-              <p>Reading 42,405 English words…</p>
+              <p>{t.readingWords}</p>
             </div>
           ) : phase === 'error' ? (
             <div className="error-state" role="alert">
-              <strong>We hit a snag.</strong>
+              <strong>{t.snag}</strong>
               <p>{message.text}</p>
             </div>
           ) : (
@@ -397,7 +475,7 @@ export default function App() {
               <div className="tile-groups">
                 {levelIndex > 0 && (
                   <div className="tile-group">
-                    <span className="group-label">Carry these</span>
+                    <span className="group-label">{t.carryThese}</span>
                     <div className="tile-rack inherited-rack">
                       {tiles
                         .filter((tile) => tile.role === 'inherited')
@@ -417,7 +495,7 @@ export default function App() {
 
                 <div className="tile-group">
                   <span className="group-label">
-                    {levelIndex === 0 ? 'Choose three' : 'Choose one more'}
+                    {levelIndex === 0 ? t.chooseThree : t.chooseOneMore}
                   </span>
                   <div className="tile-rack new-rack">
                     {tiles
@@ -456,12 +534,12 @@ export default function App() {
                   type="button"
                   onClick={useHint}
                   disabled={hintsRemaining === 0 || phase !== 'playing' || isAdvancing}
-                  title={hintsRemaining > 0 ? hintLabel : 'No hints remaining'}
+                  title={hintsRemaining > 0 ? hintLabel : t.noHints}
                 >
                   <Icon name="bulb" />
                   <span>
-                    <strong>Use a hint</strong>
-                    <small>{hintsRemaining > 0 ? hintLabel : 'No hints remaining'}</small>
+                    <strong>{t.useHint}</strong>
+                    <small>{hintsRemaining > 0 ? hintLabel : t.noHints}</small>
                   </span>
                 </button>
               </div>
@@ -480,14 +558,14 @@ export default function App() {
                 Clear selected letters
               </button>
 
-              <p className="keyboard-note">Tip: you can also type, press Enter, and use Backspace.</p>
+              <p className="keyboard-note">{t.keyboardTip}</p>
             </>
           )}
         </section>
       </main>
 
       <footer>
-        <span>Built from the supplied English dictionary</span>
+        <span>{t.builtFrom}</span>
         <span className="footer-rule" />
         <span>AI Agent Programming · Fall 2026</span>
       </footer>
@@ -510,19 +588,15 @@ export default function App() {
             >
               <Icon name="close" />
             </button>
-            <p className="eyebrow">How to play</p>
-            <h2 id="help-title">Climb one letter at a time.</h2>
+            <p className="eyebrow">{t.howToPlay}</p>
+            <h2 id="help-title">{t.howToPlayTitle}</h2>
             <ol>
-              <li>Start by finding the specific hidden 3-letter word among six gray letters.</li>
-              <li>Each new word uses every blue letter from the last answer plus one gray letter.</li>
-              <li>Rearrange the letters freely. A real English word may still be the wrong hidden word.</li>
-              <li>Reach the 8-letter word to complete the climb.</li>
+              {t.help.map((item) => <li key={item}>{item}</li>)}
             </ol>
             <div className="hint-explainer">
               <Icon name="bulb" />
               <p>
-                You get <strong>three hints for the entire game.</strong> On each round, hints remove a
-                distractor first, then reveal the first and second letters.
+                {t.hintHelp}
               </p>
             </div>
           </section>
@@ -533,16 +607,16 @@ export default function App() {
         <div className="modal-backdrop victory-backdrop">
           <section className="modal victory-modal" role="dialog" aria-modal="true" aria-labelledby="win-title">
             <div className="victory-mark" aria-hidden="true">8</div>
-            <p className="eyebrow">Climb complete</p>
-            <h2 id="win-title">You reached the top.</h2>
-            <p>Six hidden words, each carrying the last one forward.</p>
+            <p className="eyebrow">{t.complete}</p>
+            <h2 id="win-title">{t.reachedTop}</h2>
+            <p>{t.completedWords}</p>
             <div className="chain-summary" aria-label="Completed word chain">
               {chain.map((word) => (
                 <span key={word}>{word.toUpperCase()}</span>
               ))}
             </div>
             <button className="submit-button" type="button" onClick={() => dictionary && beginGame(dictionary)}>
-              Play another chain
+              {t.playAnother}
               <Icon name="refresh" />
             </button>
           </section>

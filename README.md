@@ -21,7 +21,7 @@ Open the local address shown in the terminal.
   1. remove one distractor;
   2. reveal the first letter;
   3. reveal the second letter.
-- The supplied `engwords.txt` dictionary validates guesses and playable chains.
+- English mode uses the supplied `engwords.txt` dictionary. Castellano mode uses its own curated Spanish word chains.
 
 ## Checks
 

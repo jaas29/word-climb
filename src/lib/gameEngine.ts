@@ -41,8 +41,11 @@ export function parseDictionary(raw: string): Set<string> {
   )
 }
 
-export function getPlayableChains(dictionary: Set<string>): string[][] {
-  return CURATED_CHAINS.filter(
+export function getPlayableChains(
+  dictionary: Set<string>,
+  curatedChains: readonly (readonly string[])[] = CURATED_CHAINS,
+): string[][] {
+  return curatedChains.filter(
     (chain) => isNestedChain(chain) && chain.every((word) => dictionary.has(word)),
   ).map((chain) => [...chain])
 }
@@ -50,8 +53,9 @@ export function getPlayableChains(dictionary: Set<string>): string[][] {
 export function chooseChain(
   dictionary: Set<string>,
   random: () => number = Math.random,
+  curatedChains: readonly (readonly string[])[] = CURATED_CHAINS,
 ): string[] {
-  const chains = getPlayableChains(dictionary)
+  const chains = getPlayableChains(dictionary, curatedChains)
   if (chains.length === 0) {
     throw new Error('No complete 3-to-8-letter chains were found in the dictionary.')
   }
