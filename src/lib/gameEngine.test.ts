@@ -23,8 +23,8 @@ describe('game engine', () => {
   })
 
   it('parses only usable alphabetic dictionary entries', () => {
-    const dictionary = parseDictionary('Lie\nTILE\na-b\ntoolongword\n\n')
-    expect([...dictionary]).toEqual(['lie', 'tile'])
+    const dictionary = parseDictionary('Lie\nTILE\nNORTE\nnación\na-b\ntoolongword\n\n')
+    expect([...dictionary]).toEqual(['lie', 'tile', 'norte', 'nación'])
   })
 
   it('filters curated chains through the supplied dictionary', () => {

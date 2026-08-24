@@ -21,7 +21,7 @@ Open the local address shown in the terminal.
   1. remove one distractor;
   2. reveal the first letter;
   3. reveal the second letter.
-- English mode uses the supplied `engwords.txt` dictionary. Castellano mode uses its own curated Spanish word chains.
+- English mode uses the supplied `engwords.txt` dictionary. Castellano mode validates guesses against the 87,899-word [lemario-general-del-espanol](https://github.com/olea/lemarios) list, published in the public domain; its answers use curated Spanish word chains.
 
 ## Checks
 
