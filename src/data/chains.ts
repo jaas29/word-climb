@@ -16,3 +16,12 @@ export const CURATED_CHAINS = [
   ['cap', 'pace', 'space', 'places', 'special', 'especial'],
   ['ape', 'leap', 'plead', 'pedals', 'pleased', 'pleaders'],
 ] as const
+
+/** Carefully selected Spanish nested-anagram chains for the castellano mode. */
+export const SPANISH_CHAINS = [
+  ['amo', 'coma', 'campo', 'compra', 'comprar', 'comparar'],
+  ['eso', 'peso', 'paseo', 'pesado', 'pescado', 'despacio'],
+  ['tan', 'ante', 'renta', 'entrar', 'enterar', 'entregar'],
+  ['dos', 'soda', 'sonda', 'senado', 'condesa', 'descanso'],
+  ['tal', 'alta', 'altar', 'alerta', 'lateral', 'estallar'],
+] as const

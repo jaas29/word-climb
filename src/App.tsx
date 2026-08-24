@@ -7,10 +7,11 @@ import {
   parseDictionary,
   type LetterTile,
 } from './lib/gameEngine'
+import { SPANISH_CHAINS } from './data/chains'
 
 type GamePhase = 'loading' | 'playing' | 'won' | 'error'
 type MessageTone = 'neutral' | 'good' | 'bad'
-type Language = 'en' | 'zh'
+type Language = 'en' | 'es'
 
 interface Message {
   text: string
@@ -19,7 +20,7 @@ interface Message {
 
 const COPY = {
   en: {
-    language: '语言', howToPlay: 'How to play', newGame: 'New game', climb: 'The climb',
+    language: 'Language', howToPlay: 'How to play', newGame: 'New game', climb: 'The climb',
     threeToEight: 'Three to eight', yourLetters: 'Your letters', carryThese: 'Carry these',
     chooseThree: 'Choose three', chooseOneMore: 'Choose one more', hintsLeft: 'left',
     useHint: 'Use a hint', removeDistractor: 'Remove a distractor', revealFirst: 'Reveal first letter',
@@ -40,27 +41,27 @@ const COPY = {
     revealed: (position: number, letter: string) => `Letter ${position + 1} is ${letter.toUpperCase()}.`,
     error: 'The game could not be prepared.', dictionaryError: 'The English word list could not be loaded.',
   },
-  zh: {
-    language: '语言', howToPlay: '玩法说明', newGame: '新游戏', climb: '单词阶梯',
-    threeToEight: '从三到八', yourLetters: '你的字母', carryThese: '保留这些',
-    chooseThree: '选择三个', chooseOneMore: '再选一个', hintsLeft: '次提示剩余',
-    useHint: '使用提示', removeDistractor: '移除一个干扰字母', revealFirst: '显示第一个字母',
-    revealSecond: '显示第二个字母', noHints: '没有提示了',
-    keyboardTip: '填满所有空位后会自动检查单词。你也可以用键盘输入和退格。',
-    readingWords: '正在读取 42,405 个英文单词…', snag: '出现了问题。', howToPlayTitle: '每次增加一个字母，向上攀登。',
-    help: ['先在六个灰色字母中找出指定的三个字母单词。', '每个新单词都要保留上一题的所有蓝色字母，再加一个灰色字母。', '你可以自由重新排列字母。真正的英文单词也可能不是隐藏答案。', '完成八个字母的单词即可通关。'],
-    hintHelp: '整局游戏共有三次提示。每一轮依次会移除一个干扰字母、显示第一个字母和第二个字母。',
-    complete: '登顶完成', reachedTop: '你到达顶端了。', completedWords: '六个隐藏单词，每个都保留了上一个单词的字母。', playAnother: '再玩一组单词',
-    builtFrom: '使用提供的英文词典', initial: '先拼出隐藏的三个字母单词。',
-    arrange: '排列字母；填满后会自动检查单词。',
-    nextRound: (length: number) => `保留蓝色字母，再加一个灰色字母，组成 ${length} 个字母的单词。`,
-    chooseLetters: (length: number) => `请先选择 ${length} 个字母。`,
-    correct: (word: string) => `${word.toUpperCase()} —— 正确！`,
-    wrongWord: (word: string) => `${word.toUpperCase()} 是单词，但不是隐藏答案。`,
-    notWord: (word: string) => `${word.toUpperCase()} 不在提供的词典中。`,
-    removed: '已移除一个干扰字母。',
-    revealed: (position: number, letter: string) => `第 ${position + 1} 个字母是 ${letter.toUpperCase()}。`,
-    error: '无法准备游戏。', dictionaryError: '无法加载英文单词列表。',
+  es: {
+    language: 'Idioma', howToPlay: 'Cómo jugar', newGame: 'Juego nuevo', climb: 'La escalada',
+    threeToEight: 'De tres a ocho', yourLetters: 'Tus letras', carryThese: 'Conserva estas',
+    chooseThree: 'Elige tres', chooseOneMore: 'Elige una más', hintsLeft: 'restantes',
+    useHint: 'Usar una pista', removeDistractor: 'Quitar un distractor', revealFirst: 'Mostrar primera letra',
+    revealSecond: 'Mostrar segunda letra', noHints: 'No quedan pistas',
+    keyboardTip: 'Las palabras se verifican al completar todos los espacios. También puedes escribir y usar Retroceso.',
+    readingWords: 'Preparando palabras en castellano…', snag: 'Algo salió mal.', howToPlayTitle: 'Sube agregando una letra cada vez.',
+    help: ['Comienza encontrando la palabra oculta de tres letras entre seis letras grises.', 'Cada palabra nueva usa todas las letras azules de la respuesta anterior y una letra gris.', 'Puedes reorganizar las letras libremente. Una palabra real puede no ser la respuesta oculta.', 'Llega a la palabra de ocho letras para completar la escalada.'],
+    hintHelp: 'Tienes tres pistas para toda la partida. En cada ronda, las pistas primero quitan un distractor y luego muestran la primera y segunda letra.',
+    complete: 'Escalada completada', reachedTop: 'Llegaste a la cima.', completedWords: 'Seis palabras ocultas; cada una conserva las letras de la anterior.', playAnother: 'Jugar otra cadena',
+    builtFrom: 'Palabras seleccionadas en castellano', initial: 'Forma la palabra oculta de tres letras para comenzar.',
+    arrange: 'Ordena las letras; tu palabra se verificará automáticamente.',
+    nextRound: (length: number) => `Conserva las letras azules y agrega una letra gris para formar ${length} letras.`,
+    chooseLetters: (length: number) => `Primero elige ${length} letras.`,
+    correct: (word: string) => `${word.toUpperCase()} — ¡correcto!`,
+    wrongWord: (word: string) => `${word.toUpperCase()} es una palabra, pero no es la palabra oculta.`,
+    notWord: (word: string) => `${word.toUpperCase()} no está en la lista de palabras seleccionadas.`,
+    removed: 'Se quitó un distractor.',
+    revealed: (position: number, letter: string) => `La letra ${position + 1} es ${letter.toUpperCase()}.`,
+    error: 'No se pudo preparar el juego.', dictionaryError: 'No se pudo cargar la lista de palabras en inglés.',
   },
 } as const
 
@@ -100,10 +101,17 @@ export default function App() {
   )
   const guess = entries.map((tileId) => (tileId ? tileMap.get(tileId)?.letter ?? '' : '')).join('')
 
-  const beginGame = useCallback((loadedDictionary: Set<string>) => {
-    const copy = COPY[languageRef.current]
+  const beginGame = useCallback((englishDictionary: Set<string>, selectedLanguage = languageRef.current) => {
+    const copy = COPY[selectedLanguage]
     try {
-      const nextChain = chooseChain(loadedDictionary)
+      const dictionary = selectedLanguage === 'es'
+        ? new Set(SPANISH_CHAINS.flat())
+        : englishDictionary
+      const nextChain = chooseChain(
+        dictionary,
+        Math.random,
+        selectedLanguage === 'es' ? SPANISH_CHAINS : undefined,
+      )
       setChain(nextChain)
       setLevelIndex(0)
       setTiles(createTiles(nextChain, 0))
@@ -113,7 +121,7 @@ export default function App() {
       setLockedPositions(new Set())
       setHintsRemaining(3)
       setRoundHintStep(0)
-      setMessage(initialMessage(languageRef.current))
+      setMessage(initialMessage(selectedLanguage))
       setIsAdvancing(false)
       setPhase('playing')
     } catch (error) {
@@ -136,7 +144,7 @@ export default function App() {
         if (!active) return
         const loadedDictionary = parseDictionary(raw)
         setDictionary(loadedDictionary)
-        beginGame(loadedDictionary)
+        beginGame(loadedDictionary, languageRef.current)
       })
       .catch((error: unknown) => {
         if (!active) return
@@ -362,11 +370,12 @@ export default function App() {
               onChange={(event) => {
                 const nextLanguage = event.target.value as Language
                 setLanguage(nextLanguage)
-                setMessage(initialMessage(nextLanguage))
+                if (dictionary) beginGame(dictionary, nextLanguage)
+                else setMessage(initialMessage(nextLanguage))
               }}
             >
               <option value="en">English</option>
-              <option value="zh">简体中文</option>
+              <option value="es">Castellano</option>
             </select>
           </label>
           <button
@@ -382,7 +391,7 @@ export default function App() {
             className="icon-button"
             type="button"
             aria-label={t.newGame}
-            onClick={() => dictionary && beginGame(dictionary)}
+            onClick={() => dictionary && beginGame(dictionary, language)}
             disabled={!dictionary}
           >
             <Icon name="refresh" />
@@ -442,7 +451,7 @@ export default function App() {
         <section className="play-panel" aria-labelledby="letters-title">
           <div className="round-meta">
             <div>
-              <p className="eyebrow">{language === 'zh' ? `第 ${levelIndex + 1} 轮` : `Round ${levelIndex + 1}`}</p>
+              <p className="eyebrow">{language === 'es' ? `Ronda ${levelIndex + 1}` : `Round ${levelIndex + 1}`}</p>
               <h2 id="letters-title">{t.yourLetters}</h2>
             </div>
             <div className="hints-count" aria-label={`${hintsRemaining} hints remaining`}>

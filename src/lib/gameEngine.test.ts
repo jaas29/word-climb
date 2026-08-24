@@ -7,6 +7,7 @@ import {
   parseDictionary,
   signature,
 } from './gameEngine'
+import { SPANISH_CHAINS } from '../data/chains'
 
 const sampleChain = ['lie', 'tile', 'tilde', 'detail', 'citadel', 'delicate']
 
@@ -30,6 +31,12 @@ describe('game engine', () => {
     const dictionary = new Set(sampleChain)
     expect(getPlayableChains(dictionary)).toEqual([sampleChain])
     expect(chooseChain(dictionary, () => 0)).toEqual(sampleChain)
+  })
+
+  it('supports a separate set of playable Spanish chains', () => {
+    const dictionary = new Set(SPANISH_CHAINS.flat())
+    expect(getPlayableChains(dictionary, SPANISH_CHAINS)).toHaveLength(SPANISH_CHAINS.length)
+    expect(chooseChain(dictionary, () => 0, SPANISH_CHAINS)).toEqual(SPANISH_CHAINS[0])
   })
 
   it('creates six gray tiles for the opening level', () => {
