@@ -493,7 +493,8 @@ h2 {
 }
 
 .hint-button:disabled,
-.submit-button:disabled {
+.submit-button:disabled,
+.clear-button:disabled {
   opacity: 0.45;
 }
 
@@ -512,6 +513,27 @@ h2 {
   color: #817556;
   font-size: 9px;
   line-height: 1.2;
+}
+
+.clear-button {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  gap: 7px;
+  margin-top: 16px;
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  color: #65685f;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.clear-button:hover:not(:disabled) {
+  border-bottom-color: var(--green);
+  color: var(--green-dark);
 }
 
 .keyboard-note {

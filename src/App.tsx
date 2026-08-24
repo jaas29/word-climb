@@ -135,6 +135,14 @@ export default function App() {
     })
   }, [isAdvancing, lockedPositions, phase])
 
+  const clearEntries = useCallback(() => {
+    if (phase !== 'playing' || isAdvancing) return
+    setEntries((current) =>
+      current.map((entry, position) => (lockedPositions.has(position) ? entry : null)),
+    )
+    setMessage({ text: 'Your unlocked letters have been cleared.', tone: 'neutral' })
+  }, [isAdvancing, lockedPositions, phase])
+
   const advanceLevel = useCallback(() => {
     setIsAdvancing(false)
     const nextLevel = levelIndex + 1
@@ -457,6 +465,20 @@ export default function App() {
                   </span>
                 </button>
               </div>
+
+              <button
+                className="clear-button"
+                type="button"
+                onClick={clearEntries}
+                disabled={
+                  phase !== 'playing' ||
+                  isAdvancing ||
+                  !entries.some((entry, position) => entry !== null && !lockedPositions.has(position))
+                }
+              >
+                <Icon name="close" size={16} />
+                Clear selected letters
+              </button>
 
               <p className="keyboard-note">Tip: you can also type, press Enter, and use Backspace.</p>
             </>
