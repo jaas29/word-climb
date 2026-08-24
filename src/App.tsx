@@ -252,6 +252,12 @@ export default function App() {
     setShakeCount((count) => count + 1)
   }, [advanceLevel, dictionary, entries, guess, isAdvancing, phase, t, target])
 
+  useEffect(() => {
+    if (phase === 'playing' && !isAdvancing && entries.every((entry) => entry !== null)) {
+      submitGuess()
+    }
+  }, [entries, isAdvancing, phase, submitGuess])
+
   const revealPosition = useCallback(
     (position: number) => {
       setEntries((current) => {
@@ -309,11 +315,6 @@ export default function App() {
         return
       }
       if (isHelpOpen || phase !== 'playing' || isAdvancing) return
-      if (event.key === 'Enter') {
-        event.preventDefault()
-        submitGuess()
-        return
-      }
       if (event.key === 'Backspace' || event.key === 'Delete') {
         event.preventDefault()
         removeLastEntry()
@@ -521,15 +522,6 @@ export default function App() {
 
               <div className="action-stack">
                 <button
-                  className="submit-button"
-                  type="button"
-                  onClick={submitGuess}
-                  disabled={phase !== 'playing' || isAdvancing}
-                >
-                  Submit word
-                  <Icon name="arrow" />
-                </button>
-                <button
                   className="hint-button"
                   type="button"
                   onClick={useHint}
@@ -557,6 +549,7 @@ export default function App() {
                 <Icon name="close" size={16} />
                 Clear selected letters
               </button>
+
 
               <p className="keyboard-note">{t.keyboardTip}</p>
             </>
