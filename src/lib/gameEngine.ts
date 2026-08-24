@@ -37,7 +37,7 @@ export function parseDictionary(raw: string): Set<string> {
     raw
       .split(/\r?\n/)
       .map((word) => word.trim().toLowerCase())
-      .filter((word) => /^[a-z]+$/.test(word) && word.length >= 3 && word.length <= 8),
+      .filter((word) => /^[\p{L}]+$/u.test(word) && word.length >= 3 && word.length <= 8),
   )
 }
 
@@ -88,10 +88,8 @@ function distractorLetters(
   random: () => number,
 ): string[] {
   const preferred = [...ALPHABET].filter((letter) => !target.includes(letter))
-  return Array.from({ length: count }, () => {
-    const pool = preferred.length > 0 ? preferred : [...ALPHABET]
-    return pool[Math.floor(random() * pool.length)]
-  })
+  const pool = preferred.length >= count ? preferred : [...ALPHABET]
+  return shuffle(pool, random).slice(0, count)
 }
 
 export function createTiles(

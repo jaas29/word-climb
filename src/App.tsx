@@ -9,6 +9,9 @@ import {
 } from './lib/gameEngine'
 import { SPANISH_CHAINS } from './data/chains'
 
+const SPANISH_DICTIONARY_URL =
+  'https://raw.githubusercontent.com/olea/lemarios/master/lemario-general-del-espanol.txt'
+
 type GamePhase = 'loading' | 'playing' | 'won' | 'error'
 type MessageTone = 'neutral' | 'good' | 'bad'
 type Language = 'en' | 'es'
@@ -61,7 +64,7 @@ const COPY = {
     notWord: (word: string) => `${word.toUpperCase()} no está en la lista de palabras seleccionadas.`,
     removed: 'Se quitó un distractor.',
     revealed: (position: number, letter: string) => `La letra ${position + 1} es ${letter.toUpperCase()}.`,
-    error: 'No se pudo preparar el juego.', dictionaryError: 'No se pudo cargar la lista de palabras en inglés.',
+    error: 'No se pudo preparar el juego.', dictionaryError: 'No se pudo cargar la lista de palabras en castellano.',
   },
 } as const
 
@@ -73,6 +76,7 @@ export default function App() {
   const [language, setLanguage] = useState<Language>('en')
   const languageRef = useRef<Language>('en')
   const [dictionary, setDictionary] = useState<Set<string> | null>(null)
+  const [spanishDictionary, setSpanishDictionary] = useState<Set<string> | null>(null)
   const [chain, setChain] = useState<string[]>([])
   const [levelIndex, setLevelIndex] = useState(0)
   const [tiles, setTiles] = useState<LetterTile[]>([])
@@ -88,6 +92,7 @@ export default function App() {
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [shakeCount, setShakeCount] = useState(0)
   const t = COPY[language]
+  const activeDictionary = language === 'es' ? spanishDictionary : dictionary
 
   useEffect(() => {
     languageRef.current = language
@@ -101,14 +106,11 @@ export default function App() {
   )
   const guess = entries.map((tileId) => (tileId ? tileMap.get(tileId)?.letter ?? '' : '')).join('')
 
-  const beginGame = useCallback((englishDictionary: Set<string>, selectedLanguage = languageRef.current) => {
+  const beginGame = useCallback((loadedDictionary: Set<string>, selectedLanguage = languageRef.current) => {
     const copy = COPY[selectedLanguage]
     try {
-      const dictionary = selectedLanguage === 'es'
-        ? new Set(SPANISH_CHAINS.flat())
-        : englishDictionary
       const nextChain = chooseChain(
-        dictionary,
+        loadedDictionary,
         Math.random,
         selectedLanguage === 'es' ? SPANISH_CHAINS : undefined,
       )
@@ -133,6 +135,27 @@ export default function App() {
     }
   }, [])
 
+  const loadSpanishGame = useCallback(() => {
+    setPhase('loading')
+    fetch(SPANISH_DICTIONARY_URL)
+      .then((response) => {
+        if (!response.ok) throw new Error(COPY.es.dictionaryError)
+        return response.text()
+      })
+      .then((raw) => {
+        const loadedDictionary = parseDictionary(raw)
+        setSpanishDictionary(loadedDictionary)
+        beginGame(loadedDictionary, 'es')
+      })
+      .catch((error: unknown) => {
+        setMessage({
+          text: error instanceof Error ? error.message : COPY.es.dictionaryError,
+          tone: 'bad',
+        })
+        setPhase('error')
+      })
+  }, [beginGame])
+
   useEffect(() => {
     let active = true
     fetch(`${import.meta.env.BASE_URL}engwords.txt`)
@@ -144,7 +167,7 @@ export default function App() {
         if (!active) return
         const loadedDictionary = parseDictionary(raw)
         setDictionary(loadedDictionary)
-        beginGame(loadedDictionary, languageRef.current)
+        if (languageRef.current === 'en') beginGame(loadedDictionary, 'en')
       })
       .catch((error: unknown) => {
         if (!active) return
@@ -242,15 +265,15 @@ export default function App() {
       return
     }
 
-    const isEnglishWord = dictionary?.has(guess)
+    const isDictionaryWord = activeDictionary?.has(guess)
     setMessage({
-      text: isEnglishWord
+      text: isDictionaryWord
         ? t.wrongWord(guess)
         : t.notWord(guess),
       tone: 'bad',
     })
     setShakeCount((count) => count + 1)
-  }, [advanceLevel, dictionary, entries, guess, isAdvancing, phase, t, target])
+  }, [activeDictionary, advanceLevel, entries, guess, isAdvancing, phase, t, target])
 
   useEffect(() => {
     if (phase === 'playing' && !isAdvancing && entries.every((entry) => entry !== null)) {
@@ -371,8 +394,14 @@ export default function App() {
               onChange={(event) => {
                 const nextLanguage = event.target.value as Language
                 setLanguage(nextLanguage)
-                if (dictionary) beginGame(dictionary, nextLanguage)
-                else setMessage(initialMessage(nextLanguage))
+                if (nextLanguage === 'es') {
+                  if (spanishDictionary) beginGame(spanishDictionary, 'es')
+                  else loadSpanishGame()
+                } else if (dictionary) {
+                  beginGame(dictionary, 'en')
+                } else {
+                  setMessage(initialMessage(nextLanguage))
+                }
               }}
             >
               <option value="en">English</option>
@@ -392,8 +421,15 @@ export default function App() {
             className="icon-button"
             type="button"
             aria-label={t.newGame}
-            onClick={() => dictionary && beginGame(dictionary, language)}
-            disabled={!dictionary}
+            onClick={() => {
+              if (language === 'es') {
+                if (spanishDictionary) beginGame(spanishDictionary, 'es')
+                else loadSpanishGame()
+              } else if (dictionary) {
+                beginGame(dictionary, 'en')
+              }
+            }}
+            disabled={language === 'es' ? !spanishDictionary && phase === 'loading' : !dictionary}
           >
             <Icon name="refresh" />
             <span>{t.newGame}</span>
